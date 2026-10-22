@@ -1,20 +1,30 @@
 (function(){
-    if(window.rsAutoLoaded){
-        alert('RS AUTO ইতোমধ্যে চালু আছে!');
-        return;
+    let d = localStorage.getItem('rs_device_id');
+    if(!d){
+        d = Math.random().toString(36).substring(2, 12).toUpperCase();
+        if(d.length < 10) d = d.padEnd(10, 'X');
+        if(d.length > 10) d = d.substring(0, 10);
+        localStorage.setItem('rs_device_id', d);
     }
-    
-    var devId = localStorage.getItem('rs_device_id');
-    if(!devId){
-        devId = Math.random().toString(36).substring(2,12).toUpperCase();
-        if(devId.length < 10) devId = devId.padEnd(10, 'X');
-        if(devId.length > 10) devId = devId.substring(0, 10);
-        localStorage.setItem('rs_device_id', devId);
-    }
+
+    fetch('https://rs-auto-ai-default-rtdb.firebaseio.com/devices/' + d + '.json')
+    .then(res => res.json())
+    .then(data => {
+        let now = new Date().getTime();
+        let isValid = data && data.active === true && (!data.expireAt || now <= data.expireAt);
+        if(isValid){
+            startApp();
+        } else {
+            showModal(d);
+        }
+    })
+    .catch(() => {
+        showModal(d);
+    });
 
     function showModal(id){
         if(document.getElementById('rs-lock-box')) return;
-        var box = document.createElement('div');
+        let box = document.createElement('div');
         box.id = 'rs-lock-box';
         box.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:320px;background:#161b22;border:2px solid #00f2fe;border-radius:12px;padding:20px;z-index:999999;font-family:sans-serif;color:#fff;box-shadow:0 10px 25px rgba(0,0,0,0.8);text-align:center;user-select:none;';
         box.innerHTML = '<div id="rs-lock-close" style="position:absolute;top:10px;right:15px;cursor:pointer;font-size:18px;color:#ff4757;font-weight:bold;">&times;</div>' +
@@ -36,13 +46,9 @@
         };
     }
 
-    fetch('https://rs-auto-ai-default-rtdb.firebaseio.com/devices/' + devId + '.json')
-    .then(function(res){ return res.json(); })
-    .then(function(data){
-        var now = new Date().getTime();
-        var isValid = data && data.active && (!data.expireAt || now <= data.expireAt);
-        if(!isValid){
-            showModal(devId);
+    function startApp(){
+        if(window.rsAutoLoaded){
+            alert('RS AUTO ইতোমধ্যে চালু আছে!');
             return;
         }
         window.rsAutoLoaded = true;
@@ -160,8 +166,5 @@
                 });
             }
         };
-    })
-    .catch(function(err){
-        showModal(localStorage.getItem('rs_device_id') || 'ERROR');
-    });
+    }
 })();
